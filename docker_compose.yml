@@ -1,0 +1,50 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrongPassword123!"
+    ports:
+      - "1435:1435"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+      - ./sql-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P YourStrongPassword123! -Q 'SELECT 1'"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - app-network
+    environment:
+      ADMINER_DEFAULT_SERVER: "sqlserver"
+
+  backend:
+    build: .
+    container_name: python_app
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app  # Mount the project directory into the container (for development)
+    ports:
+      - "8000:8000"  # Expose your app on port 8000 (adjust as needed)
+    networks:
+      - app-network
+    command: python main.py
+
+volumes:
+  sqlserver-data:
+
+networks:
+  app-network:
+    driver: bridge
